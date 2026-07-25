@@ -1,4 +1,4 @@
 /vendor/
-config.php
+.env
 dbguia1-2.md
 .DS_Store
