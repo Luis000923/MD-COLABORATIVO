@@ -14,6 +14,12 @@ if ($archivo === null) {
     exit;
 }
 
+if (nivelAcceso($id) !== 'edicion') {
+    http_response_code(403);
+    echo 'No tienes permiso para ver el historial de este documento.';
+    exit;
+}
+
 $versiones = Version::listarPorArchivo($id);
 $mensaje = $_GET['mensaje'] ?? null;
 ?>

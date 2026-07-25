@@ -351,3 +351,71 @@ button:hover, .btn:hover { border-color: var(--text-dim); text-decoration: none;
 }
 .snippet-hint-item:hover { background: var(--accent-soft); }
 .snippet-hint-item .hint-key { color: var(--text-faint); font-size: 0.75rem; }
+
+.hidden { display: none; }
+
+.tag-privado {
+  background: var(--error-soft);
+  color: var(--error);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.userbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 0.5rem 0 0;
+}
+.userbar a { color: var(--text-dim); }
+.userbar a:hover { color: var(--accent-text); }
+
+.form-auth, .form-desbloqueo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 340px;
+}
+.form-auth label, .form-desbloqueo label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.form-privado-opciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-direction: row !important;
+}
+
+#campos-privado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+input[type="password"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+input[type="password"]:focus { outline: none; border-color: var(--accent); }
+
+.solo-lectura-protegido {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}

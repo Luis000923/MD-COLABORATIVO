@@ -23,6 +23,12 @@ if ($archivoId <= 0 || Archivo::obtener($archivoId) === null) {
     exit;
 }
 
+if (nivelAcceso($archivoId) !== 'edicion') {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'No tienes permiso para editar este documento']);
+    exit;
+}
+
 if ($autorNombre === '') {
     http_response_code(422);
     echo json_encode(['ok' => false, 'error' => 'Falta el nombre del autor']);

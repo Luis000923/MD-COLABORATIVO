@@ -18,6 +18,12 @@ if ($versionOriginal === null) {
     exit;
 }
 
+if (nivelAcceso((int) $versionOriginal['archivo_id']) !== 'edicion') {
+    http_response_code(403);
+    echo 'No tienes permiso para revertir este documento.';
+    exit;
+}
+
 if ($autorNombre === '') {
     redirect('history.php?id=' . $versionOriginal['archivo_id'] . '&mensaje=' . urlencode('Debes indicar tu nombre para revertir.'));
 }

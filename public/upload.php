@@ -4,6 +4,8 @@ require __DIR__ . '/bootstrap.php';
 
 use App\Archivo;
 
+$usuario = requiereLogin();
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('index.php');
 }
@@ -34,6 +36,22 @@ if (!mb_check_encoding($contenido, 'UTF-8')) {
     $contenido = mb_convert_encoding($contenido, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
 }
 
+$esPrivado = isset($_POST['es_privado']);
+$passwordVista = null;
+$codigoEdicion = null;
+
+if ($esPrivado) {
+    $passwordVista = $_POST['password_vista'] ?? '';
+    $codigoEdicion = trim($_POST['codigo_edicion'] ?? '');
+
+    if (strlen($passwordVista) < 4) {
+        redirect('index.php?error=' . urlencode('La contraseña de vista debe tener al menos 4 caracteres.'));
+    }
+    if (!preg_match('/^\d{6}$/', $codigoEdicion)) {
+        redirect('index.php?error=' . urlencode('El código de edición debe ser de exactamente 6 dígitos.'));
+    }
+}
+
 $nombre = basename($nombreOriginal);
 $original = $nombre;
 $sufijo = 1;
@@ -45,6 +63,11 @@ while (!Archivo::nombreDisponible($nombre)) {
     $nombre = "{$base} ({$sufijo}).{$ext}";
 }
 
-$archivoId = Archivo::crear($nombre, $contenido, $autorNombre);
+$archivoId = Archivo::crear($nombre, $contenido, $autorNombre, $usuario['id'], $esPrivado, $passwordVista, $codigoEdicion);
+
+// El dueño ya tiene acceso de edición por serlo; no hace falta marcar sesión.
+if ($esPrivado) {
+    redirect('view.php?id=' . $archivoId . '&nueva_password=' . urlencode($passwordVista) . '&nuevo_codigo=' . urlencode($codigoEdicion));
+}
 
 redirect('view.php?id=' . $archivoId);
