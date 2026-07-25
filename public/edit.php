@@ -60,7 +60,10 @@ $version = Version::actual($id);
     <span id="guardar-estado" class="guardar-estado"></span>
   </div>
 
-  <textarea id="editor" data-archivo-id="<?= $id ?>"><?= h($version['contenido']) ?></textarea>
+  <textarea id="editor"
+            data-archivo-id="<?= $id ?>"
+            data-base-version="<?= (int) $version['numero_version'] ?>"
+            data-csrf="<?= h(csrfToken()) ?>"><?= h($version['contenido']) ?></textarea>
 
   <div id="modal-tabla" class="modal hidden">
     <div class="modal-content">

@@ -1,7 +1,8 @@
 (function () {
   if (typeof mermaid === 'undefined') return;
 
-  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  var oscuro = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: false, theme: oscuro ? 'dark' : 'default' });
 
   var blocks = document.querySelectorAll('code.language-mermaid');
   if (!blocks.length) return;

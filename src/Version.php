@@ -36,6 +36,30 @@ class Version
         return $row ?: null;
     }
 
+    /**
+     * Número de la versión más reciente de un archivo (0 si no hay ninguna).
+     * Usado para control de conflicto (S4).
+     */
+    public static function numeroActual(int $archivoId): int
+    {
+        $pdo = getConnection();
+        $stmt = $pdo->prepare('SELECT COALESCE(MAX(numero_version), 0) FROM versiones WHERE archivo_id = ?');
+        $stmt->execute([$archivoId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public static function porNumero(int $archivoId, int $numero): ?array
+    {
+        $pdo = getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT id, archivo_id, numero_version, autor_nombre, contenido, creado_en, es_reversion
+             FROM versiones WHERE archivo_id = ? AND numero_version = ?'
+        );
+        $stmt->execute([$archivoId, $numero]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     public static function listarPorArchivo(int $archivoId): array
     {
         $pdo = getConnection();

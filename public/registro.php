@@ -11,6 +11,8 @@ if (usuarioActual() !== null) {
 $error = $_GET['error'] ?? null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verificarCsrf();
+
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $passwordConfirmacion = $_POST['password_confirmacion'] ?? '';
@@ -25,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('registro.php?error=' . urlencode('Ese usuario ya existe.'));
     } else {
         $usuarioId = Usuario::crear($username, $password);
-        $_SESSION['usuario_id'] = $usuarioId;
+        iniciarSesionUsuario($usuarioId);
         redirect('index.php');
     }
 }
@@ -50,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <p class="alert alert-error"><?= h($error) ?></p>
     <?php endif; ?>
     <form action="registro.php" method="post" class="form-auth">
+      <?= csrfField() ?>
       <label>
         Usuario
         <input type="text" name="username" maxlength="50" required autofocus>

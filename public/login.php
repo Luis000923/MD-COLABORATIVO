@@ -3,24 +3,35 @@
 require __DIR__ . '/bootstrap.php';
 
 use App\Usuario;
+use App\RateLimit;
 
 if (usuarioActual() !== null) {
     redirect('index.php');
 }
 
 $error = $_GET['error'] ?? null;
-$next = $_GET['next'] ?? $_POST['next'] ?? 'index.php';
+$next = destinoSeguro($_GET['next'] ?? $_POST['next'] ?? 'index.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verificarCsrf();
+
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
+    // Rate-limit por IP para frenar fuerza bruta de cuentas (S8).
+    $claveLimite = 'login:' . RateLimit::ip();
+    if (RateLimit::bloqueado($claveLimite, 10, 900)) {
+        redirect('login.php?error=' . urlencode('Demasiados intentos. Espera unos minutos e inténtalo de nuevo.') . '&next=' . urlencode($next));
+    }
+
     $usuario = Usuario::verificarLogin($username, $password);
     if ($usuario === null) {
+        RateLimit::registrarFallo($claveLimite);
         redirect('login.php?error=' . urlencode('Usuario o contraseña incorrectos.') . '&next=' . urlencode($next));
     }
 
-    $_SESSION['usuario_id'] = $usuario['id'];
+    RateLimit::limpiar($claveLimite);
+    iniciarSesionUsuario((int) $usuario['id']);
     redirect($next);
 }
 ?>
@@ -44,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <p class="alert alert-error"><?= h($error) ?></p>
     <?php endif; ?>
     <form action="login.php" method="post" class="form-auth">
+      <?= csrfField() ?>
       <input type="hidden" name="next" value="<?= h($next) ?>">
       <label>
         Usuario

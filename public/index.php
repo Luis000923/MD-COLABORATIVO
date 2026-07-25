@@ -3,16 +3,32 @@
 require __DIR__ . '/bootstrap.php';
 
 use App\Archivo;
+use App\Etiqueta;
 
 $usuario = usuarioActual();
-$todosArchivos = Archivo::listar();
+
+$busqueda = trim($_GET['q'] ?? '');
+$etiquetaFiltro = isset($_GET['etiqueta']) ? (int) $_GET['etiqueta'] : 0;
+
+if ($busqueda !== '') {
+    $todosArchivos = Archivo::buscar($busqueda);
+} elseif ($etiquetaFiltro > 0) {
+    $todosArchivos = Etiqueta::archivosConEtiqueta($etiquetaFiltro);
+} else {
+    $todosArchivos = Archivo::listar();
+}
+
+// Ocultar documentos privados ajenos: solo se listan si el usuario es dueño.
 $archivos = array_values(array_filter($todosArchivos, function (array $archivo) use ($usuario) {
     if (!$archivo['es_privado']) {
         return true;
     }
     return $usuario !== null && (int) $archivo['usuario_id'] === (int) $usuario['id'];
 }));
+
+$etiquetas = Etiqueta::todas();
 $error = $_GET['error'] ?? null;
+$mensajeIndex = flashLeer('mensaje_index');
 ?>
 <!doctype html>
 <html lang="es">
@@ -28,7 +44,11 @@ $error = $_GET['error'] ?? null;
   <p class="subtitle">Sube, edita y comparte documentos Markdown</p>
   <p class="userbar">
     <?php if ($usuario): ?>
-      Hola, <?= h($usuario['username']) ?> · <a href="logout.php">Cerrar sesión</a>
+      Hola, <?= h($usuario['username']) ?> ·
+      <form action="logout.php" method="post" class="inline-logout">
+        <?= csrfField() ?>
+        <button type="submit" class="link-button">Cerrar sesión</button>
+      </form>
     <?php else: ?>
       <a href="login.php">Iniciar sesión</a> · <a href="registro.php">Registrarse</a>
     <?php endif; ?>
@@ -36,6 +56,10 @@ $error = $_GET['error'] ?? null;
 </header>
 
 <main class="container">
+
+  <?php if ($mensajeIndex): ?>
+    <p class="alert alert-ok"><?= h($mensajeIndex) ?></p>
+  <?php endif; ?>
 
   <section class="panel">
     <h2>Subir nuevo documento</h2>
@@ -46,6 +70,7 @@ $error = $_GET['error'] ?? null;
       <p class="empty">Debes <a href="login.php">iniciar sesión</a> para subir documentos.</p>
     <?php else: ?>
       <form action="upload.php" method="post" enctype="multipart/form-data" class="form-upload">
+        <?= csrfField() ?>
         <label>
           Archivo (.md)
           <input type="file" name="archivo" accept=".md,.markdown,text/markdown" required>
@@ -74,9 +99,42 @@ $error = $_GET['error'] ?? null;
   </section>
 
   <section class="panel">
-    <h2>Documentos (<?= count($archivos) ?>)</h2>
+    <form action="index.php" method="get" class="form-busqueda" role="search">
+      <label class="visually-hidden" for="q">Buscar documentos</label>
+      <input type="search" id="q" name="q" placeholder="Buscar por nombre o contenido…" value="<?= h($busqueda) ?>">
+      <button type="submit" class="btn-primary">Buscar</button>
+      <?php if ($busqueda !== '' || $etiquetaFiltro > 0): ?>
+        <a href="index.php" class="btn btn-secondary">Limpiar</a>
+      <?php endif; ?>
+    </form>
+    <?php if ($etiquetas): ?>
+      <p class="etiqueta-lista">
+        <?php foreach ($etiquetas as $et): ?>
+          <a class="tag-etiqueta<?= $etiquetaFiltro === (int) $et['id'] ? ' activa' : '' ?>"
+             href="index.php?etiqueta=<?= (int) $et['id'] ?>"><?= h($et['nombre']) ?> <span class="hint-key"><?= (int) $et['total'] ?></span></a>
+        <?php endforeach; ?>
+      </p>
+    <?php endif; ?>
+  </section>
+
+  <section class="panel">
+    <h2>
+      <?php if ($busqueda !== ''): ?>
+        Resultados para "<?= h($busqueda) ?>" (<?= count($archivos) ?>)
+      <?php elseif ($etiquetaFiltro > 0): ?>
+        Documentos etiquetados (<?= count($archivos) ?>)
+      <?php else: ?>
+        Documentos (<?= count($archivos) ?>)
+      <?php endif; ?>
+    </h2>
     <?php if (empty($archivos)): ?>
-      <p class="empty">Aún no hay documentos. Sube el primero arriba.</p>
+      <p class="empty">
+        <?php if ($busqueda !== '' || $etiquetaFiltro > 0): ?>
+          No se encontraron documentos con ese criterio.
+        <?php else: ?>
+          Aún no hay documentos. Sube el primero arriba.
+        <?php endif; ?>
+      </p>
     <?php else: ?>
       <ul class="file-list">
         <?php foreach ($archivos as $archivo): ?>
@@ -84,12 +142,16 @@ $error = $_GET['error'] ?? null;
             <a href="view.php?id=<?= (int) $archivo['id'] ?>" class="file-name">
               <?= h($archivo['nombre']) ?>
             </a>
-            <?php if ($archivo['es_privado']): ?><span class="tag-privado">Privado</span><?php endif; ?>
+            <?php if ($archivo['es_privado']): ?>
+              <span class="tag-privado">Privado</span>
+            <?php else: ?>
+              <span class="tag-neutral">Público</span>
+            <?php endif; ?>
             <span class="file-meta">
               v<?= (int) $archivo['total_versiones'] ?> · actualizado <?= h($archivo['actualizado_en']) ?>
             </span>
             <span class="file-actions">
-              <a href="edit.php?id=<?= (int) $archivo['id'] ?>">Editar</a>
+              <a href="view.php?id=<?= (int) $archivo['id'] ?>">Ver</a>
               <a href="history.php?id=<?= (int) $archivo['id'] ?>">Historial</a>
             </span>
           </li>

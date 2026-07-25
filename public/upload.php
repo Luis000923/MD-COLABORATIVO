@@ -10,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('index.php');
 }
 
+verificarCsrf();
+
 $autorNombre = trim($_POST['autor_nombre'] ?? '');
 if ($autorNombre === '') {
     redirect('index.php?error=' . urlencode('Debes indicar tu nombre.'));
@@ -66,8 +68,12 @@ while (!Archivo::nombreDisponible($nombre)) {
 $archivoId = Archivo::crear($nombre, $contenido, $autorNombre, $usuario['id'], $esPrivado, $passwordVista, $codigoEdicion);
 
 // El dueño ya tiene acceso de edición por serlo; no hace falta marcar sesión.
+// Los secretos se pasan por flash de sesión, no por URL (S7).
 if ($esPrivado) {
-    redirect('view.php?id=' . $archivoId . '&nueva_password=' . urlencode($passwordVista) . '&nuevo_codigo=' . urlencode($codigoEdicion));
+    flashGuardar('nueva_credencial', [
+        'password' => $passwordVista,
+        'codigo' => $codigoEdicion,
+    ]);
 }
 
 redirect('view.php?id=' . $archivoId);

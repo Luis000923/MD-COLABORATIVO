@@ -3,6 +3,8 @@
   if (!textarea) return;
 
   var archivoId = textarea.dataset.archivoId;
+  var baseVersion = textarea.dataset.baseVersion || '0';
+  var csrfToken = textarea.dataset.csrf || '';
 
   var easymde = new EasyMDE({
     element: textarea,
@@ -213,17 +215,29 @@
       body: new URLSearchParams({
         archivo_id: archivoId,
         autor_nombre: autorNombre,
-        contenido: cm.getValue()
+        contenido: cm.getValue(),
+        base_version: baseVersion,
+        csrf_token: csrfToken
       })
     })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
+      .then(function (res) {
+        return res.json().then(function (data) { return { status: res.status, data: data }; });
+      })
+      .then(function (r) {
+        var data = r.data;
         if (data.ok) {
           estadoEl.textContent = 'Guardado como v' + data.numero_version + '.';
           estadoEl.className = 'guardar-estado ok';
           setTimeout(function () {
             window.location.href = 'view.php?id=' + archivoId;
           }, 700);
+        } else if (r.status === 409 && data.conflicto) {
+          // Otra persona guardó primero: no pisamos su trabajo (S4).
+          estadoEl.textContent = data.error;
+          estadoEl.className = 'guardar-estado error';
+          if (confirm(data.error + '\n\n¿Abrir la versión actual en otra pestaña para comparar? (Tu texto se conserva aquí.)')) {
+            window.open('view.php?id=' + archivoId, '_blank');
+          }
         } else {
           estadoEl.textContent = 'Error: ' + (data.error || 'desconocido');
           estadoEl.className = 'guardar-estado error';

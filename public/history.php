@@ -44,6 +44,7 @@ $mensaje = $_GET['mensaje'] ?? null;
     </div>
     <div class="doc-actions">
       <a href="view.php?id=<?= $id ?>" class="btn btn-secondary">Ver documento</a>
+      <a href="gestion.php?id=<?= $id ?>" class="btn btn-secondary">Gestionar</a>
       <a href="index.php" class="btn btn-secondary">Volver</a>
     </div>
   </section>
@@ -52,6 +53,7 @@ $mensaje = $_GET['mensaje'] ?? null;
     <p class="alert alert-ok"><?= h($mensaje) ?></p>
   <?php endif; ?>
 
+  <div class="tabla-scroll">
   <table class="history-table">
     <thead>
       <tr>
@@ -69,11 +71,13 @@ $mensaje = $_GET['mensaje'] ?? null;
           <td><?= h($v['autor_nombre']) ?></td>
           <td><?= h($v['creado_en']) ?></td>
           <td><?= $v['es_reversion'] ? 'Reversión' : 'Edición' ?></td>
-          <td>
+          <td class="history-acciones">
             <?php if ($i === 0): ?>
               <span class="tag-actual">Actual</span>
             <?php else: ?>
+              <a href="diff.php?id=<?= $id ?>&desde=<?= (int) $v['numero_version'] ?>" class="btn-inline">Ver cambios</a>
               <form action="revert.php" method="post" class="inline-form" onsubmit="return confirm('¿Revertir el documento a esta versión? Esto crea una nueva versión con este contenido, no se pierde el historial.');">
+                <?= csrfField() ?>
                 <input type="hidden" name="version_id" value="<?= (int) $v['id'] ?>">
                 <input type="text" name="autor_nombre" placeholder="Tu nombre" required class="js-autor-nombre-inline">
                 <button type="submit">Revertir a esta</button>
@@ -84,6 +88,7 @@ $mensaje = $_GET['mensaje'] ?? null;
       <?php endforeach; ?>
     </tbody>
   </table>
+  </div>
 </main>
 
 <script>

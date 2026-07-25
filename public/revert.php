@@ -8,6 +8,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('index.php');
 }
 
+verificarCsrf();
+
 $versionId = (int) ($_POST['version_id'] ?? 0);
 $autorNombre = trim($_POST['autor_nombre'] ?? '');
 
