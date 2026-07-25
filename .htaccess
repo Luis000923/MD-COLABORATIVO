@@ -1,0 +1,11 @@
+# Bloquea acceso directo a todo lo que no esté en /public.
+# El document root del dominio en Hostinger debe apuntar a /public;
+# este archivo es una capa extra de seguridad por si el document root
+# quedara mal configurado en la raíz del proyecto.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>
