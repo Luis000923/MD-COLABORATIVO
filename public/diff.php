@@ -50,20 +50,15 @@ if ($vDesde === null || $vHasta === null) {
 $ops = Diff::lineas($vDesde['contenido'], $vHasta['contenido']);
 $resumen = Diff::resumen($ops);
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cambios de <?= h($archivo['nombre']) ?></title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Cambios de ' . $archivo['nombre']) ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
+  <?= userbarHtml('diff.php?id=' . $id) ?>
 </header>
 
-<main class="container">
+<main class="container container-wide" id="contenido">
   <section class="doc-toolbar">
     <div>
       <h2>Cambios: <?= h($archivo['nombre']) ?></h2>
@@ -97,6 +92,10 @@ $resumen = Diff::resumen($ops);
     </label>
     <button type="submit" class="btn-primary">Comparar</button>
   </form>
+
+  <?php if ($desde === $hasta): ?>
+    <p class="alert alert-ok">Este documento solo tiene una versión, así que no hay cambios que comparar todavía.</p>
+  <?php endif; ?>
 
   <div class="diff-view">
     <?php foreach ($ops as $op): ?>

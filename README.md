@@ -36,6 +36,20 @@ Abrir `http://127.0.0.1:8000`.
 - `schema.sql` — esquema de base de datos
 - `.env` — credenciales de conexión (no versionar; usar `.env.example` como plantilla)
 
+## Interfaz
+
+- Hoja única `public/assets/css/app.css`, con tokens de color, espaciado y
+  tipografía en `:root` y variante clara automática vía `prefers-color-scheme`.
+  Cambiar la paleta es cambiar esas variables.
+- El `<head>` de todas las páginas sale de `htmlHead()` (en `bootstrap.php`);
+  la barra de sesión, de `userbarHtml()`.
+- Los assets se enlazan con `asset()`, que añade `?v=<mtime>`: por eso
+  `public/.htaccess` los cachea un año sin riesgo de servir versiones viejas.
+- Mermaid solo se descarga en documentos que realmente contienen diagramas,
+  y hereda la paleta de la app.
+- `APP_DEBUG=true` en `.env` muestra el detalle de las excepciones en pantalla.
+  En producción debe quedar en `false`.
+
 ## Funcionamiento del versionado
 
 Cada guardado crea una versión nueva (snapshot completo) con el nombre del autor. Nada se sobrescribe ni se borra. "Revertir" en el historial crea una nueva versión con el contenido de una versión anterior — no es un merge selectivo estilo git, es restaurar el documento completo al estado de esa versión.

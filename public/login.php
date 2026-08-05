@@ -35,20 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect($next);
 }
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Iniciar sesión</title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Iniciar sesión') ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
 </header>
 
-<main class="container">
+<main class="container" id="contenido">
   <section class="panel">
     <h2>Iniciar sesión</h2>
     <?php if ($error): ?>
@@ -59,11 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input type="hidden" name="next" value="<?= h($next) ?>">
       <label>
         Usuario
-        <input type="text" name="username" required autofocus>
+        <input type="text" name="username" required autofocus autocomplete="username">
       </label>
       <label>
         Contraseña
-        <input type="password" name="password" required>
+        <input type="password" name="password" required autocomplete="current-password">
       </label>
       <button type="submit" class="btn-primary">Entrar</button>
     </form>

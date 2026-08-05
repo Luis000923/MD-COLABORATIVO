@@ -2,6 +2,39 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+/**
+ * Cualquier excepción no capturada (típicamente la base de datos caída)
+ * terminaba volcando el stack trace con rutas del servidor en el navegador.
+ * Se registra en el log y se muestra una página sobria; el detalle solo
+ * aparece con APP_DEBUG=true en el .env.
+ */
+set_exception_handler(function (\Throwable $e): void {
+    error_log('[md] ' . $e);
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+    }
+
+    $debug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?: 'false', FILTER_VALIDATE_BOOL);
+    $detalle = $debug
+        ? '<pre style="white-space:pre-wrap;overflow-x:auto">'
+            . htmlspecialchars((string) $e, ENT_QUOTES, 'UTF-8') . '</pre>'
+        : '<p>Si el problema persiste, avisa a quien administra el sitio.</p>';
+
+    echo '<!doctype html><html lang="es"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>Error del servidor</title>'
+        . '<link rel="stylesheet" href="assets/css/app.css"></head><body>'
+        . '<main class="container"><section class="panel">'
+        . '<h2>Algo falló</h2>'
+        . '<p class="alert alert-error">No se pudo completar la operación. '
+        . 'Suele deberse a que la base de datos no está disponible.</p>'
+        . $detalle
+        . '<p><a href="index.php" class="btn btn-secondary">Volver al inicio</a></p>'
+        . '</section></main></body></html>';
+});
+
 // ---- Cookie de sesión endurecida (S6) ----
 $cookieSegura = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
@@ -23,6 +56,78 @@ $dotenv->required(['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS']);
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * URL de un asset con cache-busting por fecha de modificación. Permite
+ * cachear CSS/JS de forma agresiva en el servidor sin servir versiones
+ * viejas después de un despliegue.
+ */
+function asset(string $ruta): string
+{
+    $absoluta = __DIR__ . '/' . ltrim($ruta, '/');
+    $mtime = is_file($absoluta) ? filemtime($absoluta) : false;
+
+    return $mtime === false ? $ruta : $ruta . '?v=' . $mtime;
+}
+
+/**
+ * <head> común de todas las páginas: metadatos, favicon SVG embebido (evita
+ * un 404 de /favicon.ico en cada carga) y la hoja de estilos versionada.
+ * $extra permite añadir hojas o etiquetas propias de una página.
+ */
+function htmlHead(string $titulo, string $extra = ''): string
+{
+    $favicon = rawurlencode(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        . '<rect width="32" height="32" rx="7" fill="#c98a4b"/>'
+        . '<path d="M8 23V9h3.4l4.6 7 4.6-7H24v14h-3.3v-8.5L16 21l-4.7-6.5V23z" fill="#16130d"/>'
+        . '</svg>'
+    );
+
+    return '<!doctype html>' . "\n"
+        . '<html lang="es">' . "\n"
+        . '<head>' . "\n"
+        . '<meta charset="utf-8">' . "\n"
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">' . "\n"
+        . '<meta name="color-scheme" content="dark light">' . "\n"
+        . '<title>' . h($titulo) . '</title>' . "\n"
+        . '<link rel="icon" href="data:image/svg+xml,' . $favicon . '">' . "\n"
+        . $extra
+        . '<link rel="stylesheet" href="' . h(asset('assets/css/app.css')) . '">' . "\n"
+        . '</head>';
+}
+
+/**
+ * Barra de sesión de la cabecera. Va en un <div>: contiene el formulario de
+ * logout (POST + CSRF) y un <form> dentro de un <p> es HTML inválido — el
+ * navegador cerraba el párrafo antes del formulario y rompía la línea.
+ */
+function userbarHtml(?string $next = null): string
+{
+    $usuario = usuarioActual();
+
+    if ($usuario !== null) {
+        return '<div class="userbar">'
+            . '<span>Hola, <span class="usuario-nombre">' . h($usuario['username']) . '</span></span>'
+            . '<span class="sep" aria-hidden="true">·</span>'
+            . '<form action="logout.php" method="post" class="inline-logout">'
+            . csrfField()
+            . '<button type="submit" class="link-button">Cerrar sesión</button>'
+            . '</form>'
+            . '</div>';
+    }
+
+    $login = 'login.php';
+    if ($next !== null && $next !== '') {
+        $login .= '?next=' . urlencode($next);
+    }
+
+    return '<div class="userbar">'
+        . '<a href="' . h($login) . '">Iniciar sesión</a>'
+        . '<span class="sep" aria-hidden="true">·</span>'
+        . '<a href="registro.php">Registrarse</a>'
+        . '</div>';
 }
 
 function redirect(string $url): never

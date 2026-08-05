@@ -47,32 +47,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['secreto_doc'])) {
 
 $nivel = nivelAcceso($id);
 $credencialNueva = flashLeer('nueva_credencial');
+
+// El documento se renderiza antes del <head> para saber si realmente contiene
+// diagramas: mermaid pesa ~1 MB y antes se descargaba en cada vista, incluso
+// en la pantalla de desbloqueo de un documento privado.
+$version = null;
+$html = '';
+$tieneMermaid = false;
+
+if ($nivel !== 'ninguno') {
+    $version = Version::actual($id);
+    $html = Markdown::toHtml($version['contenido']);
+    $tieneMermaid = str_contains($html, 'language-mermaid');
+}
+
+$headExtra = $tieneMermaid
+    ? '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n"
+    : '';
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= h($archivo['nombre']) ?></title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead($archivo['nombre'], $headExtra) ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
-  <p class="userbar">
-    <?php if ($usuario): ?>
-      Hola, <?= h($usuario['username']) ?> ·
-      <form action="logout.php" method="post" class="inline-logout">
-        <?= csrfField() ?>
-        <button type="submit" class="link-button">Cerrar sesión</button>
-      </form>
-    <?php else: ?>
-      <a href="login.php?next=<?= h(urlencode('view.php?id=' . $id)) ?>">Iniciar sesión</a> · <a href="registro.php">Registrarse</a>
-    <?php endif; ?>
-  </p>
+  <?= userbarHtml('view.php?id=' . $id) ?>
 </header>
 
-<main class="container">
+<main class="container" id="contenido">
 <?php if ($nivel === 'ninguno'): ?>
 
   <section class="panel">
@@ -92,8 +93,6 @@ $credencialNueva = flashLeer('nueva_credencial');
   </section>
 
 <?php else:
-  $version = Version::actual($id);
-  $html = Markdown::toHtml($version['contenido']);
   $soloLectura = $nivel === 'lectura';
   $etiquetas = Etiqueta::deArchivo($id);
   $comentarios = Comentario::listarPorArchivo($id);
@@ -148,7 +147,7 @@ $credencialNueva = flashLeer('nueva_credencial');
     <?= $html ?>
   </article>
 
-  <section class="panel comentarios">
+  <section class="panel comentarios" id="comentarios">
     <h2>Comentarios (<?= count($comentarios) ?>)</h2>
     <?php if ($comentarios): ?>
       <ul class="comentario-lista">
@@ -195,8 +194,10 @@ $credencialNueva = flashLeer('nueva_credencial');
 <?php endif; ?>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script src="assets/js/render.js"></script>
+<?php if ($tieneMermaid): ?>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+<script src="<?= h(asset('assets/js/render.js')) ?>" defer></script>
+<?php endif; ?>
 <?php if ($nivel === 'lectura' && $archivo['es_privado']): ?>
 <script>
 (function () {

@@ -32,20 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Crear cuenta</title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Crear cuenta') ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
 </header>
 
-<main class="container">
+<main class="container" id="contenido">
   <section class="panel">
     <h2>Crear cuenta</h2>
     <?php if ($error): ?>
@@ -55,15 +49,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?= csrfField() ?>
       <label>
         Usuario
-        <input type="text" name="username" maxlength="50" required autofocus>
+        <input type="text" name="username" maxlength="50" required autofocus autocomplete="username">
       </label>
       <label>
         Contraseña
-        <input type="password" name="password" minlength="8" required>
+        <input type="password" name="password" minlength="8" required autocomplete="new-password">
       </label>
       <label>
         Confirmar contraseña
-        <input type="password" name="password_confirmacion" minlength="8" required>
+        <input type="password" name="password_confirmacion" minlength="8" required autocomplete="new-password">
       </label>
       <button type="submit" class="btn-primary">Crear cuenta</button>
     </form>

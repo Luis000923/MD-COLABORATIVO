@@ -21,22 +21,21 @@ if (nivelAcceso($id) !== 'edicion') {
 }
 
 $version = Version::actual($id);
+
+// La hoja de EasyMDE va antes que app.css: así las reglas de tema de la app
+// (que adaptan el editor al modo oscuro) ganan por orden de cascada.
+$headExtra = '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n"
+    . '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2/dist/easymde.min.css">' . "\n";
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Editando <?= h($archivo['nombre']) ?></title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Editando ' . $archivo['nombre'], $headExtra) ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
+  <?= userbarHtml('edit.php?id=' . $id) ?>
 </header>
 
-<main class="container">
+<main class="container container-wide" id="contenido">
   <section class="doc-toolbar">
     <div>
       <h2>Editando: <?= h($archivo['nombre']) ?></h2>
@@ -56,10 +55,11 @@ $version = Version::actual($id);
     <button type="button" id="btn-insertar-tabla">Insertar tabla</button>
     <button type="button" id="btn-insertar-mermaid">Insertar diagrama</button>
     <button type="button" id="btn-insertar-outline">Insertar esquema</button>
+    <span id="guardar-estado" class="guardar-estado" role="status" aria-live="polite"></span>
     <button type="button" id="btn-guardar" class="btn-primary">Guardar</button>
-    <span id="guardar-estado" class="guardar-estado"></span>
   </div>
 
+  <label class="visually-hidden" for="editor">Contenido del documento en Markdown</label>
   <textarea id="editor"
             data-archivo-id="<?= $id ?>"
             data-base-version="<?= (int) $version['numero_version'] ?>"
@@ -78,7 +78,7 @@ $version = Version::actual($id);
   </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-<script src="assets/js/editor.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/easymde@2/dist/easymde.min.js"></script>
+<script src="<?= h(asset('assets/js/editor.js')) ?>"></script>
 </body>
 </html>

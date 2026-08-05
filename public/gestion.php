@@ -103,20 +103,15 @@ $etiquetasActuales = Etiqueta::deArchivo($id);
 $etiquetasTexto = implode(', ', array_column($etiquetasActuales, 'nombre'));
 $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestionar <?= h($archivo['nombre']) ?></title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Gestionar ' . $archivo['nombre']) ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
   <h1><a href="index.php" class="link-plain">Documentos</a></h1>
+  <?= userbarHtml('gestion.php?id=' . $id) ?>
 </header>
 
-<main class="container">
+<main class="container" id="contenido">
   <section class="doc-toolbar">
     <div>
       <h2>Gestionar: <?= h($archivo['nombre']) ?></h2>
@@ -153,17 +148,18 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
       <?= csrfField() ?>
       <input type="hidden" name="accion" value="visibilidad">
       <label class="form-privado-opciones">
-        <input type="checkbox" name="es_privado" id="ges-privado" <?= $archivo['es_privado'] ? 'checked' : '' ?>>
+        <input type="checkbox" name="es_privado" id="ges-privado" aria-controls="ges-campos-privado"
+               aria-expanded="<?= $archivo['es_privado'] ? 'true' : 'false' ?>" <?= $archivo['es_privado'] ? 'checked' : '' ?>>
         Privado
       </label>
-      <div id="ges-campos-privado" class="<?= $archivo['es_privado'] ? '' : 'hidden' ?>">
+      <div id="ges-campos-privado" class="campos-privado<?= $archivo['es_privado'] ? '' : ' hidden' ?>">
         <label>
           Contraseña de vista <?= $archivo['es_privado'] ? '(dejar vacío para no cambiar)' : '' ?>
-          <input type="password" name="password_vista" minlength="4">
+          <input type="password" name="password_vista" minlength="4" autocomplete="new-password">
         </label>
         <label>
           Código de edición (6 dígitos) <?= $archivo['es_privado'] ? '(dejar vacío para no cambiar)' : '' ?>
-          <input type="text" name="codigo_edicion" pattern="\d{6}" maxlength="6" placeholder="123456">
+          <input type="text" name="codigo_edicion" pattern="\d{6}" maxlength="6" inputmode="numeric" placeholder="123456" autocomplete="off">
         </label>
       </div>
       <button type="submit" class="btn-primary">Actualizar visibilidad</button>
@@ -193,14 +189,14 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
           <li class="file-item">
             <span class="file-name"><?= h($col['username']) ?></span>
             <span class="tag-neutral"><?= h($col['rol']) ?></span>
-            <span class="file-actions">
+            <div class="file-actions">
               <form action="gestion.php?id=<?= $id ?>" method="post" class="inline-form">
                 <?= csrfField() ?>
                 <input type="hidden" name="accion" value="colaborador_del">
                 <input type="hidden" name="usuario_id" value="<?= (int) $col['usuario_id'] ?>">
                 <button type="submit" class="link-button link-danger">Quitar</button>
               </form>
-            </span>
+            </div>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -210,8 +206,10 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
     <form action="gestion.php?id=<?= $id ?>" method="post" class="inline-form form-colaborador">
       <?= csrfField() ?>
       <input type="hidden" name="accion" value="colaborador_add">
-      <input type="text" name="username" placeholder="usuario" required>
-      <select name="rol">
+      <label class="visually-hidden" for="colaborador-username">Usuario a agregar</label>
+      <input type="text" id="colaborador-username" name="username" placeholder="usuario" required>
+      <label class="visually-hidden" for="colaborador-rol">Rol del colaborador</label>
+      <select id="colaborador-rol" name="rol">
         <option value="edicion">Edición</option>
         <option value="lectura">Lectura</option>
       </select>
@@ -236,9 +234,14 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
   var checkbox = document.getElementById('ges-privado');
   var campos = document.getElementById('ges-campos-privado');
   if (!checkbox || !campos) return;
-  checkbox.addEventListener('change', function () {
+
+  function sincronizar() {
     campos.classList.toggle('hidden', !checkbox.checked);
-  });
+    checkbox.setAttribute('aria-expanded', checkbox.checked ? 'true' : 'false');
+  }
+
+  sincronizar();
+  checkbox.addEventListener('change', sincronizar);
 })();
 </script>
 </body>

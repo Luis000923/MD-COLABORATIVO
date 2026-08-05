@@ -6,30 +6,48 @@
   var baseVersion = textarea.dataset.baseVersion || '0';
   var csrfToken = textarea.dataset.csrf || '';
 
-  var easymde = new EasyMDE({
-    element: textarea,
-    spellChecker: false,
-    autofocus: true,
-    status: ['lines', 'words', 'cursor'],
-    toolbar: [
-      'bold', 'italic', 'strikethrough', 'heading', '|',
-      'quote', 'unordered-list', 'ordered-list', '|',
-      'link', 'image', 'code', '|',
-      'preview', 'side-by-side', 'fullscreen', '|',
-      'guide'
-    ]
-  });
+  var estadoEl = document.getElementById('guardar-estado');
+
+  function avisar(texto, clase) {
+    if (!estadoEl) return;
+    estadoEl.textContent = texto;
+    estadoEl.className = 'guardar-estado' + (clase ? ' ' + clase : '');
+  }
+
+  // Si el CDN de EasyMDE no carga, el <textarea> plano sigue siendo editable
+  // y Guardar sigue funcionando: solo se pierden toolbar y snippets.
+  var easymde = null;
+  if (typeof EasyMDE !== 'undefined') {
+    easymde = new EasyMDE({
+      element: textarea,
+      spellChecker: false,
+      autofocus: true,
+      status: ['lines', 'words', 'cursor'],
+      toolbar: [
+        'bold', 'italic', 'strikethrough', 'heading', '|',
+        'quote', 'unordered-list', 'ordered-list', '|',
+        'link', 'image', 'code', '|',
+        'preview', 'side-by-side', 'fullscreen', '|',
+        'guide'
+      ]
+    });
+  }
+
+  var cm = easymde ? easymde.codemirror : null;
+
+  function contenidoActual() {
+    return cm ? cm.getValue() : textarea.value;
+  }
 
   // ---- Autor: recordar en localStorage ----
   var autorInput = document.getElementById('autor-nombre');
-  var savedAutor = localStorage.getItem('md_autor_nombre');
-  if (savedAutor) autorInput.value = savedAutor;
-  autorInput.addEventListener('change', function () {
-    localStorage.setItem('md_autor_nombre', autorInput.value);
-  });
-
-  // ---- Autocompletado / snippets sobre CodeMirror ----
-  var cm = easymde.codemirror;
+  if (autorInput) {
+    var savedAutor = localStorage.getItem('md_autor_nombre');
+    if (savedAutor) autorInput.value = savedAutor;
+    autorInput.addEventListener('change', function () {
+      localStorage.setItem('md_autor_nombre', autorInput.value);
+    });
+  }
 
   var SNIPPETS = {
     'mermaid': '```mermaid\nflowchart TD\n    A[Inicio] --> B{Decisión}\n    B -->|Sí| C[Fin]\n    B -->|No| D[Fin alterno]\n```\n',
@@ -49,6 +67,21 @@
     return { text: line.slice(start, end), from: { line: cursor.line, ch: start }, to: { line: cursor.line, ch: end } };
   }
 
+  // Inserta texto en la posición del cursor, con o sin CodeMirror montado.
+  function insertarTexto(texto) {
+    if (cm) {
+      cm.replaceRange(texto, cm.getCursor());
+      cm.focus();
+      return;
+    }
+    var inicio = textarea.selectionStart || 0;
+    var fin = textarea.selectionEnd || inicio;
+    textarea.value = textarea.value.slice(0, inicio) + texto + textarea.value.slice(fin);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = inicio + texto.length;
+  }
+
+  if (cm) {
   // Popup de sugerencias propio (sin depender del addon show-hint de
   // CodeMirror, que requiere un CodeMirror global — EasyMDE bundlea el
   // suyo internamente y no lo expone en window).
@@ -130,17 +163,16 @@
       editor.replaceSelection('    ');
     }
   }));
+  }
 
   // ---- Insertar diagrama Mermaid ----
   document.getElementById('btn-insertar-mermaid').addEventListener('click', function () {
-    var cursor = cm.getCursor();
-    cm.replaceRange(SNIPPETS.mermaid, cursor);
-    cm.focus();
+    insertarTexto(SNIPPETS.mermaid);
   });
 
   // ---- Insertar esquema (outline) a partir de encabezados existentes ----
   document.getElementById('btn-insertar-outline').addEventListener('click', function () {
-    var contenido = cm.getValue();
+    var contenido = contenidoActual();
     var lineas = contenido.split(/\r?\n/);
     var encabezados = [];
 
@@ -162,19 +194,34 @@
       outline = '- Tema principal\n  - Subtema 1\n  - Subtema 2\n    - Detalle\n- Otro tema principal\n';
     }
 
-    var cursor = cm.getCursor();
-    cm.replaceRange('\n## Esquema\n\n' + outline + '\n', cursor);
-    cm.focus();
+    insertarTexto('\n## Esquema\n\n' + outline + '\n');
   });
 
   // ---- Modal: insertar tabla ----
   var modal = document.getElementById('modal-tabla');
-  document.getElementById('btn-insertar-tabla').addEventListener('click', function () {
+
+  function abrirModal() {
     modal.classList.remove('hidden');
-  });
-  document.getElementById('tabla-cancelar').addEventListener('click', function () {
+    var primer = document.getElementById('tabla-filas');
+    if (primer) primer.focus();
+  }
+
+  function cerrarModal() {
     modal.classList.add('hidden');
+    if (cm) cm.focus();
+  }
+
+  document.getElementById('btn-insertar-tabla').addEventListener('click', abrirModal);
+  document.getElementById('tabla-cancelar').addEventListener('click', cerrarModal);
+
+  // Cerrar con Escape o clic en el fondo, como cualquier diálogo.
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) cerrarModal();
   });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) cerrarModal();
+  });
+
   document.getElementById('tabla-confirmar').addEventListener('click', function () {
     var filas = parseInt(document.getElementById('tabla-filas').value, 10) || 1;
     var columnas = parseInt(document.getElementById('tabla-columnas').value, 10) || 1;
@@ -188,26 +235,34 @@
 
     var tablaMd = '\n' + [header, separator].concat(rows).join('\n') + '\n';
 
-    var cursor = cm.getCursor();
-    cm.replaceRange(tablaMd, cursor);
-    cm.focus();
-    modal.classList.add('hidden');
+    insertarTexto(tablaMd);
+    cerrarModal();
   });
 
   // ---- Guardar ----
-  var estadoEl = document.getElementById('guardar-estado');
+  var btnGuardar = document.getElementById('btn-guardar');
+  var contenidoGuardado = contenidoActual();
+  var guardando = false;
+
+  function hayCambios() {
+    return contenidoActual() !== contenidoGuardado;
+  }
 
   function guardar() {
-    var autorNombre = autorInput.value.trim();
+    if (guardando) return;
+
+    var autorNombre = autorInput ? autorInput.value.trim() : '';
     if (!autorNombre) {
-      estadoEl.textContent = 'Indica tu nombre antes de guardar.';
-      estadoEl.className = 'guardar-estado error';
-      autorInput.focus();
+      avisar('Indica tu nombre antes de guardar.', 'error');
+      if (autorInput) autorInput.focus();
       return;
     }
 
-    estadoEl.textContent = 'Guardando...';
-    estadoEl.className = 'guardar-estado';
+    var contenido = contenidoActual();
+
+    guardando = true;
+    btnGuardar.disabled = true;
+    avisar('Guardando…');
 
     fetch('save.php', {
       method: 'POST',
@@ -215,39 +270,72 @@
       body: new URLSearchParams({
         archivo_id: archivoId,
         autor_nombre: autorNombre,
-        contenido: cm.getValue(),
+        contenido: contenido,
         base_version: baseVersion,
         csrf_token: csrfToken
       })
     })
       .then(function (res) {
-        return res.json().then(function (data) { return { status: res.status, data: data }; });
+        // save.php siempre responde JSON, pero un error 500 del servidor o una
+        // página de mantenimiento devolverían HTML: no reventar el parseo.
+        return res.text().then(function (texto) {
+          var data;
+          try {
+            data = JSON.parse(texto);
+          } catch (e) {
+            data = { ok: false, error: 'Respuesta inesperada del servidor (' + res.status + ')' };
+          }
+          return { status: res.status, data: data };
+        });
       })
       .then(function (r) {
         var data = r.data;
         if (data.ok) {
-          estadoEl.textContent = 'Guardado como v' + data.numero_version + '.';
-          estadoEl.className = 'guardar-estado ok';
+          contenidoGuardado = contenido;
+          avisar('Guardado como v' + data.numero_version + '.', 'ok');
           setTimeout(function () {
             window.location.href = 'view.php?id=' + archivoId;
           }, 700);
-        } else if (r.status === 409 && data.conflicto) {
+          return;
+        }
+
+        if (r.status === 409 && data.conflicto) {
           // Otra persona guardó primero: no pisamos su trabajo (S4).
-          estadoEl.textContent = data.error;
-          estadoEl.className = 'guardar-estado error';
+          avisar(data.error, 'error');
           if (confirm(data.error + '\n\n¿Abrir la versión actual en otra pestaña para comparar? (Tu texto se conserva aquí.)')) {
             window.open('view.php?id=' + archivoId, '_blank');
           }
         } else {
-          estadoEl.textContent = 'Error: ' + (data.error || 'desconocido');
-          estadoEl.className = 'guardar-estado error';
+          avisar('Error: ' + (data.error || 'desconocido'), 'error');
         }
       })
       .catch(function () {
-        estadoEl.textContent = 'Error de red al guardar.';
-        estadoEl.className = 'guardar-estado error';
+        avisar('Error de red al guardar.', 'error');
+      })
+      .finally(function () {
+        guardando = false;
+        btnGuardar.disabled = false;
       });
   }
 
-  document.getElementById('btn-guardar').addEventListener('click', guardar);
+  btnGuardar.addEventListener('click', guardar);
+
+  // Ctrl/Cmd+S guarda en lugar de abrir el diálogo del navegador.
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      guardar();
+    }
+  });
+
+  // Avisar antes de perder cambios sin guardar.
+  window.addEventListener('beforeunload', function (e) {
+    if (!hayCambios()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  if (!easymde) {
+    avisar('Editor enriquecido no disponible: se está usando el editor de texto simple.', 'error');
+  }
 })();

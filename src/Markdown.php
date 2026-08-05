@@ -3,6 +3,7 @@
 namespace App;
 
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\DisallowedRawHtml\DisallowedRawHtmlExtension;
 use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\MarkdownConverter;
@@ -15,11 +16,12 @@ class Markdown
     {
         if (self::$converter === null) {
             $environment = new Environment([
-                'html_input' => 'escape',
+                'html_input' => 'allow',
                 'allow_unsafe_links' => false,
             ]);
             $environment->addExtension(new CommonMarkCoreExtension());
             $environment->addExtension(new GithubFlavoredMarkdownExtension());
+            $environment->addExtension(new DisallowedRawHtmlExtension());
             self::$converter = new MarkdownConverter($environment);
         }
 
@@ -28,7 +30,59 @@ class Markdown
 
     public static function toHtml(string $markdown): string
     {
-        return (string) self::converter()->convert($markdown);
+        $html = (string) self::converter()->convert($markdown);
+
+        return self::sanitize($html);
+    }
+
+    /**
+     * Filtra el HTML crudo permitido por CommonMark: quita atributos
+     * on* (onerror, onclick, ...) y esquemas de URL peligrosos
+     * (javascript:, data:text/html) que DisallowedRawHtmlExtension no cubre.
+     */
+    private static function sanitize(string $html): string
+    {
+        if (trim($html) === '') {
+            return $html;
+        }
+
+        $documento = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $documento->loadHTML(
+            '<?xml encoding="utf-8" ?><div id="mdroot">' . $html . '</div>',
+            LIBXML_NOERROR | LIBXML_NOWARNING
+        );
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($documento);
+        foreach ($xpath->query('//*') as $nodo) {
+            if (!$nodo instanceof \DOMElement) {
+                continue;
+            }
+
+            foreach (iterator_to_array($nodo->attributes) as $atributo) {
+                $nombre = strtolower($atributo->nodeName);
+                $valor = trim($atributo->nodeValue);
+
+                if (str_starts_with($nombre, 'on')) {
+                    $nodo->removeAttribute($atributo->nodeName);
+                    continue;
+                }
+
+                if (in_array($nombre, ['src', 'href'], true)
+                    && preg_match('/^\s*(javascript|data)\s*:/i', $valor)) {
+                    $nodo->removeAttribute($atributo->nodeName);
+                }
+            }
+        }
+
+        $raiz = $documento->getElementById('mdroot');
+        $resultado = '';
+        foreach ($raiz->childNodes as $hijo) {
+            $resultado .= $documento->saveHTML($hijo);
+        }
+
+        return $resultado;
     }
 
     /**

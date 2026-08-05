@@ -30,32 +30,18 @@ $etiquetas = Etiqueta::todas();
 $error = $_GET['error'] ?? null;
 $mensajeIndex = flashLeer('mensaje_index');
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Documentos</title>
-<link rel="stylesheet" href="assets/css/app.css">
-</head>
+<?= htmlHead('Documentos') ?>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 <header class="topbar">
-  <h1>Documentos</h1>
-  <p class="subtitle">Sube, edita y comparte documentos Markdown</p>
-  <p class="userbar">
-    <?php if ($usuario): ?>
-      Hola, <?= h($usuario['username']) ?> ·
-      <form action="logout.php" method="post" class="inline-logout">
-        <?= csrfField() ?>
-        <button type="submit" class="link-button">Cerrar sesión</button>
-      </form>
-    <?php else: ?>
-      <a href="login.php">Iniciar sesión</a> · <a href="registro.php">Registrarse</a>
-    <?php endif; ?>
-  </p>
+  <div>
+    <h1>Documentos</h1>
+    <p class="subtitle">Sube, edita y comparte documentos Markdown</p>
+  </div>
+  <?= userbarHtml() ?>
 </header>
 
-<main class="container">
+<main class="container" id="contenido">
 
   <?php if ($mensajeIndex): ?>
     <p class="alert alert-ok"><?= h($mensajeIndex) ?></p>
@@ -80,20 +66,20 @@ $mensajeIndex = flashLeer('mensaje_index');
           <input type="text" name="autor_nombre" placeholder="ej. Tatiana" required class="js-autor-nombre">
         </label>
         <label class="form-privado-opciones">
-          <input type="checkbox" id="es-privado" name="es_privado">
+          <input type="checkbox" id="es-privado" name="es_privado" aria-controls="campos-privado" aria-expanded="false">
           Privado
         </label>
-        <div id="campos-privado" class="hidden">
+        <div id="campos-privado" class="campos-privado hidden">
           <label>
             Contraseña de vista
-            <input type="password" name="password_vista" minlength="4" id="password-vista">
+            <input type="password" name="password_vista" minlength="4" id="password-vista" autocomplete="new-password">
           </label>
           <label>
             Código de edición (6 dígitos)
-            <input type="text" name="codigo_edicion" pattern="\d{6}" maxlength="6" id="codigo-edicion" placeholder="123456">
+            <input type="text" name="codigo_edicion" pattern="\d{6}" maxlength="6" inputmode="numeric" id="codigo-edicion" placeholder="123456" autocomplete="off">
           </label>
         </div>
-        <button type="submit">Subir</button>
+        <button type="submit" class="btn-primary">Subir</button>
       </form>
     <?php endif; ?>
   </section>
@@ -176,9 +162,16 @@ $mensajeIndex = flashLeer('mensaje_index');
   var checkbox = document.getElementById('es-privado');
   var camposPrivado = document.getElementById('campos-privado');
   if (!checkbox || !camposPrivado) return;
-  checkbox.addEventListener('change', function () {
+
+  function sincronizarPrivado() {
     camposPrivado.classList.toggle('hidden', !checkbox.checked);
-  });
+    checkbox.setAttribute('aria-expanded', checkbox.checked ? 'true' : 'false');
+  }
+
+  // Sincronizar también al cargar: el navegador puede restaurar el estado
+  // del checkbox tras un back/forward y dejarlo desalineado con el panel.
+  sincronizarPrivado();
+  checkbox.addEventListener('change', sincronizarPrivado);
 })();
 </script>
 </body>
