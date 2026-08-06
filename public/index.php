@@ -139,6 +139,14 @@ $mensajeIndex = flashLeer('mensaje_index');
             <span class="file-actions">
               <a href="view.php?id=<?= (int) $archivo['id'] ?>">Ver</a>
               <a href="history.php?id=<?= (int) $archivo['id'] ?>">Historial</a>
+              <?php if ($usuario !== null && (int) $archivo['usuario_id'] === (int) $usuario['id']): ?>
+                <form action="gestion.php?id=<?= (int) $archivo['id'] ?>" method="post" class="inline-form"
+                      onsubmit="return confirm('¿Borrar «<?= h(addslashes($archivo['nombre'])) ?>»? Se ocultará de la lista (no se elimina el historial en la base de datos).');">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="accion" value="borrar">
+                  <button type="submit" class="link-button link-danger">Eliminar</button>
+                </form>
+              <?php endif; ?>
             </span>
           </li>
         <?php endforeach; ?>
