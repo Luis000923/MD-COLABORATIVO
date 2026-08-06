@@ -136,6 +136,14 @@ function redirect(string $url): never
     exit;
 }
 
+function urlBase(): string
+{
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+    return ($https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+}
+
 /**
  * Valida que una URL de redirección sea una ruta local relativa (S10).
  * Rechaza URLs absolutas (http://, //host) y esquemas raros para evitar
@@ -268,6 +276,11 @@ function iniciarSesionUsuario(int $usuarioId): void
  *       · código de 6 dígitos ok     -> 'edicion' (sesión)
  *       · contraseña de vista ok     -> 'lectura' (sesión)
  *       · nada                       -> 'ninguno'
+ *
+ * El nivel de sesión (desbloqueo por código/contraseña o por un enlace de
+ * compartir vía s.php) siempre puede ELEVAR el acceso base, público o
+ * privado, pero nunca lo baja por debajo de lo que ya corresponde por
+ * cuenta/rol (un dueño no queda en solo-lectura por un enlace viejo).
  */
 function nivelAcceso(int $archivoId): string
 {
@@ -277,13 +290,11 @@ function nivelAcceso(int $archivoId): string
     }
 
     $usuario = usuarioActual();
+    $base = 'ninguno';
 
     if (!$archivo['es_privado']) {
-        return $usuario !== null ? 'edicion' : 'lectura';
-    }
-
-    // Privado a partir de aquí.
-    if ($usuario !== null) {
+        $base = $usuario !== null ? 'edicion' : 'lectura';
+    } elseif ($usuario !== null) {
         if (\App\Archivo::esDueno($archivoId, $usuario['id'])) {
             return 'edicion';
         }
@@ -292,12 +303,19 @@ function nivelAcceso(int $archivoId): string
             return 'edicion';
         }
         if ($rol === 'lectura') {
-            return 'lectura';
+            $base = 'lectura';
         }
     }
 
     $nivelSesion = $_SESSION['acceso_docs'][$archivoId] ?? null;
-    return $nivelSesion === 'edicion' || $nivelSesion === 'lectura' ? $nivelSesion : 'ninguno';
+    if ($nivelSesion === 'edicion') {
+        return 'edicion';
+    }
+    if ($nivelSesion === 'lectura' && $base !== 'edicion') {
+        return 'lectura';
+    }
+
+    return $base;
 }
 
 function marcarAcceso(int $archivoId, string $nivel): void

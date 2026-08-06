@@ -3,6 +3,7 @@
 require __DIR__ . '/bootstrap.php';
 
 use App\Archivo;
+use App\Enlace;
 use App\Etiqueta;
 use App\Usuario;
 
@@ -76,6 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nombres = array_filter(array_map('trim', explode(',', $raw)), fn ($n) => $n !== '');
         Etiqueta::asignar($id, $nombres);
         $mensaje = 'Etiquetas actualizadas.';
+    } elseif ($accion === 'enlace_crear') {
+        $nivel = ($_POST['nivel'] ?? 'lectura') === 'edicion' ? 'edicion' : 'lectura';
+        Enlace::crear($id, $nivel);
+        $mensaje = 'Enlace generado.';
+    } elseif ($accion === 'enlace_borrar') {
+        $enlaceId = (int) ($_POST['enlace_id'] ?? 0);
+        Enlace::borrar($enlaceId, $id);
+        $mensaje = 'Enlace eliminado.';
     } elseif ($accion === 'colaborador_add' && $esDueno) {
         $username = trim($_POST['username'] ?? '');
         $rol = $_POST['rol'] ?? 'edicion';
@@ -102,6 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $etiquetasActuales = Etiqueta::deArchivo($id);
 $etiquetasTexto = implode(', ', array_column($etiquetasActuales, 'nombre'));
 $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
+$enlaces = Enlace::listarPorArchivo($id);
+$urlBase = urlBase();
 ?>
 <?= htmlHead('Gestionar ' . $archivo['nombre']) ?>
 <body>
@@ -180,6 +191,43 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
     </form>
   </section>
 
+  <section class="panel" id="compartir">
+    <h2>Compartir</h2>
+    <p class="file-meta">Cualquiera con el enlace entra directo, sin pedir contraseña ni código.</p>
+    <?php if ($enlaces): ?>
+      <ul class="file-list">
+        <?php foreach ($enlaces as $en): $urlEnlace = $urlBase . '/s.php?t=' . $en['token']; ?>
+          <li class="file-item">
+            <input type="text" class="file-name" readonly value="<?= h($urlEnlace) ?>"
+                   onclick="this.select()" aria-label="Enlace de compartir">
+            <span class="tag-neutral"><?= $en['nivel'] === 'edicion' ? 'Edición' : 'Lectura' ?></span>
+            <span class="file-actions">
+              <button type="button" class="btn btn-secondary js-copiar-enlace" data-url="<?= h($urlEnlace) ?>">Copiar</button>
+              <form action="gestion.php?id=<?= $id ?>" method="post" class="inline-form">
+                <?= csrfField() ?>
+                <input type="hidden" name="accion" value="enlace_borrar">
+                <input type="hidden" name="enlace_id" value="<?= (int) $en['id'] ?>">
+                <button type="submit" class="link-button link-danger">Eliminar</button>
+              </form>
+            </span>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php else: ?>
+      <p class="empty">Sin enlaces de compartir todavía.</p>
+    <?php endif; ?>
+    <form action="gestion.php?id=<?= $id ?>" method="post" class="inline-form">
+      <?= csrfField() ?>
+      <input type="hidden" name="accion" value="enlace_crear">
+      <label class="visually-hidden" for="enlace-nivel">Nivel de acceso del enlace</label>
+      <select id="enlace-nivel" name="nivel">
+        <option value="lectura">Solo lectura</option>
+        <option value="edicion">Edición</option>
+      </select>
+      <button type="submit" class="btn-primary">Generar enlace</button>
+    </form>
+  </section>
+
   <?php if ($esDueno): ?>
   <section class="panel">
     <h2>Colaboradores</h2>
@@ -242,6 +290,19 @@ $colaboradores = $esDueno ? Archivo::listarColaboradores($id) : [];
 
   sincronizar();
   checkbox.addEventListener('change', sincronizar);
+})();
+</script>
+<script>
+(function () {
+  document.querySelectorAll('.js-copiar-enlace').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(btn.dataset.url).then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copiado';
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      });
+    });
+  });
 })();
 </script>
 </body>

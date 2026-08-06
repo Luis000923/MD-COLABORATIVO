@@ -81,6 +81,18 @@ CREATE TABLE IF NOT EXISTS archivo_colaborador (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Enlaces cortos de compartir (lectura o edición) via s.php?t=token.
+CREATE TABLE IF NOT EXISTS enlaces (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  archivo_id INT NOT NULL,
+  token VARCHAR(16) NOT NULL,
+  nivel ENUM('lectura','edicion') NOT NULL DEFAULT 'lectura',
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_enlace_token (token),
+  FOREIGN KEY (archivo_id) REFERENCES archivos(id) ON DELETE CASCADE,
+  INDEX idx_enlaces_archivo (archivo_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================================
 --  Migración para bases ya desplegadas (ejecutar una sola vez)
 -- ============================================================
@@ -153,4 +165,16 @@ CREATE TABLE IF NOT EXISTS archivo_colaborador (
 --   PRIMARY KEY (archivo_id, usuario_id),
 --   FOREIGN KEY (archivo_id) REFERENCES archivos(id) ON DELETE CASCADE,
 --   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--
+-- -- Enlaces cortos de compartir:
+-- CREATE TABLE IF NOT EXISTS enlaces (
+--   id INT AUTO_INCREMENT PRIMARY KEY,
+--   archivo_id INT NOT NULL,
+--   token VARCHAR(16) NOT NULL,
+--   nivel ENUM('lectura','edicion') NOT NULL DEFAULT 'lectura',
+--   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--   UNIQUE KEY uniq_enlace_token (token),
+--   FOREIGN KEY (archivo_id) REFERENCES archivos(id) ON DELETE CASCADE,
+--   INDEX idx_enlaces_archivo (archivo_id)
 -- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -133,6 +133,7 @@ $headExtra = $tieneMermaid
         <a href="history.php?id=<?= $id ?>" class="btn btn-secondary">Historial</a>
         <a href="download.php?id=<?= $id ?>" class="btn btn-secondary">Descargar .md</a>
         <a href="export.php?id=<?= $id ?>" class="btn btn-secondary">Exportar HTML</a>
+        <a href="gestion.php?id=<?= $id ?>#compartir" class="btn btn-secondary">Compartir</a>
         <a href="gestion.php?id=<?= $id ?>" class="btn btn-secondary">Gestionar</a>
       <?php endif; ?>
       <a href="index.php" class="btn btn-secondary">Volver</a>
